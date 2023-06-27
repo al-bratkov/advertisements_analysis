@@ -1,0 +1,95 @@
+.index-container-_48kP {
+    background-color: #0af;
+    color: #fff;
+    font-size: 14px;
+    line-height: 20px;
+    overflow: hidden;
+    position: relative;
+}
+
+.index-inner-DUJ3I {
+    position: relative;
+    width: 1200px;
+    margin: 0 auto;
+}
+
+.index-left-part-IJK3_,
+.index-right-part-AEHiA {
+    position: relative;
+    padding: 6px 0;
+    display: inline-block;
+}
+
+.index-left-part-IJK3_ {
+    padding-right: 90px;
+    padding-left: 17px;
+    position: relative;
+    background-color: #ff6163;
+}
+
+.index-inline-lD8b7 {
+    display: inline-block;
+}
+
+.index-icon-chrome-H8aux {
+    position: absolute;
+    display: block;
+    width: 204px;
+    height: 32px;
+    top: 0;
+    left: -102px;
+    background-image: url(/dstatic/build/assets/../assets/089d1664d5a8fac21bff.png);
+}
+
+@media screen and (-webkit-min-device-pixel-ratio: 2), screen and (min-resolution: 192dpi), screen and (min-resolution: 2dppx) {
+    .index-icon-chrome-H8aux {
+        background-image: url(/dstatic/build/assets/../assets/67c3800868a1ae91b92c.png);
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+}
+
+.index-cross-dfGDm {
+    position: absolute;
+    top: 4px;
+    right: 17px;
+    width: 21px;
+    height: 21px;
+    padding: 0;
+    cursor: pointer;
+    border: 0;
+    background-color: transparent;
+    z-index: 1;
+}
+
+.index-cross-dfGDm:focus {
+    outline: 0;
+}
+
+.index-cross-icon-qG9xn {
+    vertical-align: top;
+    position: relative;
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    background: url(/dstatic/build/assets/../assets/8654f7533c1c70bf6603.png) -43px -1px no-repeat;
+    border: 1px solid #fff;
+    border-radius: 50%;
+}
+
+.index-download-_Ge0o {
+    margin-left: 33px;
+    font-weight: 600;
+}
+
+.index-download-_Ge0o,
+.index-download-_Ge0o:hover {
+    color: #fff;
+    text-decoration: none;
+}
+
+.index-by-design-inline-nuIpm {
+    display: inline-block;
+    padding-left: 90px;
+}
+

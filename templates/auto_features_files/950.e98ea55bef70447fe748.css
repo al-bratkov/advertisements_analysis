@@ -1,0 +1,46 @@
+.app-container-root-a9Uez {
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+}
+
+.app-container-root-a9Uez .app-container-container-EHlMi {
+    width: 499px;
+    background-color: #fff;
+}
+
+.app-container-root-a9Uez .app-container-inlineContainer-xO8r0 {
+    width: 439px;
+    padding: 10px 35px 20px;
+    background-color: #fff;
+}
+
+.app-container-root-a9Uez .app-container-narrow-_nXGt.app-container-inlineContainer-xO8r0 {
+    width: auto;
+    padding: 0;
+}
+
+.app-container-gorelkin-design-dXNkZ,
+.app-container-gorelkin-design-dXNkZ > div {
+    border-radius: 20px;
+    width: 630px;
+}
+
+.app-container-gorelkin-design-dXNkZ > div {
+    /* stylelint-disable-next-line declaration-no-important */
+    padding: 0 40px !important;
+}
+
+.app-container-gorelkin-design-dXNkZ > div::before {
+    /* stylelint-disable-next-line declaration-no-important */
+    height: 36px !important;
+}
+
+.app-container-gorelkin-design-dXNkZ > div::after {
+    /* stylelint-disable-next-line declaration-no-important */
+    height: 44px !important;
+}
+
+.app-container-root-a9Uez .app-container-container-EHlMi.app-container-gorelkin-design-dXNkZ,
+.app-container-root-a9Uez .app-container-inlineContainer-xO8r0.app-container-gorelkin-design-dXNkZ {
+    width: 630px;
+}
+
