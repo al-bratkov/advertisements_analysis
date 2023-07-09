@@ -13,27 +13,33 @@ import random
 user_way = "C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Default"
 proxy = "51.159.212.239:80"
 chrome_options = webdriver.ChromeOptions()
-#chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Default")
+# chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Default")
 chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Profile 1")
 chrome_options.add_experimental_option("useAutomationExtension", False)
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
 # chrome_options.add_argument("--proxy-server=%s" % proxy)
-# chrome_options.add_argument('--headless')
+chrome_options.add_argument('--headless')
 
 url = "https://www.avito.ru/stavropolskiy_kray/avtomobili?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJA4LYNFKaKNKbaDhQC&user=1"
 file = "auto.csv"
 
 
-def model_page(browser, url):
+def model_page(browser, url):  # url uses for particular tests
+    """
+    Get information about car model
+    :param browser: Selenium webdriver object
+    :param url: uses for particular tests
+    :return: a list with gotten features
+    """
     time.sleep(1)
-    scrolls = random.choice([1, 4])
+    scrolls = random.choice([1, 4])  #
     time.sleep(5)
-    for _ in range(scrolls):
+    for _ in range(scrolls):  # scroll page for imitation of human behavior
         browser.execute_script("window.scrollBy(0, 100);")
     # browser.get(url)
     time.sleep(random.randint(1,4))
     cur_url = browser.current_url
-    main_table = browser.find_elements(By.CLASS_NAME, "styles-block-zWT9W")
+    main_table = browser.find_elements(By.CLASS_NAME, "styles-block-zWT9W")  # finds all
     main_titles = [el.text.split("\n")[0] for el in main_table]
     div_main = main_table[main_titles.index("Основные характеристики")].find_elements(By.CLASS_NAME, "desktop-1jb7eb2")
     divmain_titles = [el.text.split("\n")[0] for el in div_main]
@@ -68,7 +74,7 @@ def model_page(browser, url):
     modification = div_rest[rest_titles.index("Модификация")].find_element(By.CSS_SELECTOR, "span:nth-child(2)").text
     num_doors = int(div_rest[rest_titles.index("Количество дверей")].find_element(By.CSS_SELECTOR, "span:nth-child(2)").text)
     try:
-        wheel_drive = div_main[main_titles.index("Привод")].find_element(By.CSS_SELECTOR, "span:nth-child(2)").text
+        wheel_drive = div_main[divmain_titles.index("Привод")].find_element(By.CSS_SELECTOR, "span:nth-child(2)").text
     except ValueError:
         wheel_drive = np.NaN
     except NameError:
@@ -80,6 +86,13 @@ def model_page(browser, url):
 
 
 def car_page(browser, url, model_uids):
+    """
+    Get information about a car in an advertisement
+    :param browser: Selenium webdriver object
+    :param url: uses for particular tests, also one item in output
+    :param model_uids: dictionary with model uids (part of url) as keys, values are model features
+    :return: list with full information about car
+    """
     way = random.choice([0, 1])
     scroll_len = 0
     if way == 0:
@@ -96,11 +109,10 @@ def car_page(browser, url, model_uids):
     except selenium.common.exceptions.NoSuchElementException:
         is_owner = False
     is_promo = np.NaN
-    _car_path = browser.find_elements(By.CLASS_NAME, "breadcrumbs-linkWrapper-jZP0j")  # .breadcrumbs-root-_GADZ .
-    # region = _car_path[0].text
+    _car_path = browser.find_elements(By.CLASS_NAME, "breadcrumbs-linkWrapper-jZP0j")
     brand = _car_path[4].text
     model = _car_path[5].text
-    year = int(browser.find_element(By.CSS_SELECTOR, ".title-info-title-text").text[-4:])
+    # year = int(browser.find_element(By.CSS_SELECTOR, ".title-info-title-text").text[-4:])
     _location = browser.find_element(By.CSS_SELECTOR, ".style-item-address-KooqC .style-item-address__string-wt61A")\
         .text.split(", ")
     try:
@@ -111,9 +123,6 @@ def car_page(browser, url, model_uids):
         city = _location[1]
     except IndexError:
         city = np.NaN
-    # city_start = url.find("avito.ru/") + 9
-    # city_end = url[city_start:].find("/")
-    # city = url[city_start:city_start + city_end]
     _car_table = browser.find_element(By.CLASS_NAME, "params-paramsList-zLpAu").find_elements(By.TAG_NAME, "li")
     _car_dict = {feature.text.split(": ")[0]: feature.text.split(": ")[1] for feature in _car_table}
     if "Пробег" in _car_dict.keys():
@@ -121,6 +130,7 @@ def car_page(browser, url, model_uids):
     else:
         mileage = np.NaN
     count_owners = _car_dict.get("Владельцев по ПТС", np.NaN)
+    year = _car_dict.get("Год выпуска", np.NaN)
     price = int("".join([l for l in browser.find_element(By.CLASS_NAME, "style-item-price-PuQ0I")\
            .text if l.isdigit()]))
     browser.execute_script(f"window.scrollBy(0, {height_window*2+random.randint(1, 100)});")
@@ -188,64 +198,110 @@ def car_page(browser, url, model_uids):
     return auto
 
 
-def search_page(browser, url, file, model_uids, ad_ids):
+def search_page(browser, url, file, model_uids, ad_ids, num_cars=50):
+    """
+    Iter items in one list from all search results. Max value is 50
+    :param browser: Selenium webdriver object
+    :param url: uses for particular tests
+    :param file: csv file for results. Add information from each advertisement one by one
+    :param model_uids: dictionary with model uids (part of url) as keys, values are model features
+    :param ad_ids: list of advertisement ids
+    :return: list of lists with information about cars on page
+    """
     # browser.get(url)
-    cars = browser.find_elements(By.CSS_SELECTOR, ".iva-item-title-py3i_>a")
+    cars = browser.find_elements(By.CSS_SELECTOR, ".iva-item-title-py3i_>a")[:num_cars]
     cars_href = [a.get_attribute("href") for a in cars]
     new_rows = []
     main_tab = browser.current_window_handle
     height_car = browser.find_element(By.CLASS_NAME, "index-content-_KxNP").size["height"] / len(cars) * 1.1
     for i, car in enumerate(cars):
         if cars_href[i].split("_")[-1] not in ad_ids:
+            if random.random() > 0.90:
+                time.sleep(60)
             cars[i].click()
             browser.switch_to.window(browser.window_handles[1])
-            time.sleep(random.choice([2, 6]))
+            time.sleep(random.choice([4, 10]))
             row = car_page(browser, cars_href[i], model_uids)
             new_rows.append(row)
             row_df = pd.DataFrame([row, ])
             row_df.to_csv(file, mode="a", encoding="utf-8", header=False, index=False, sep=";")
-            time.sleep(random.choice([2, 5]))
+            time.sleep(random.choice([2, 10]))
             browser.close()
             browser.switch_to.window(main_tab)
-            time.sleep(random.choice([2, 5]))
+            time.sleep(random.choice([5, 15]))
             browser.execute_script(f"window.scrollBy(0, {height_car});")
             print(i + 1)
     return new_rows
 
 
-def through_pages(browser, url, file, database=None):
+def through_pages(browser, url, file, only_region=False, database=None):
+    """
+    Pagination
+    :param browser: Selenium webdriver object
+    :param url: url for webriver.get()
+    :param file: csv file for results. Add information from each advertisement one by one
+    :param database: FOR FUTURE
+    :return: list of lists with information about cars from search results
+    """
     browser.get(url)
     pagen = browser.find_element(By.CLASS_NAME, "pagination-pagination-_FSNE")
-    last_page = pagen.find_element(By.CSS_SELECTOR, "nav>ul>li:nth-last-child(2)").text
     df = pd.read_csv(file, encoding="utf-8", sep=";")
     ad_ids = df["avito_id"].astype("str").str[:-2].values
     model_uids = {df.loc[row, "model_uid"]: df.loc[row, ["en_capacity", "en_type", "en_power", "num_cylinders",
                                                            "fuel_waste_mix", "body_type", "modification", "num_doors",
                                                            "gearbox_type", "wheel_drive"]] for row in range(df.shape[0])}
-    cars = search_page(browser, url, file, model_uids, ad_ids)
-    print(cars)
-    for i in range(int(last_page)-1):
-        pagen = browser.find_element(By.CLASS_NAME, "pagination-pagination-_FSNE")
-        next_page = pagen.find_element(By.CSS_SELECTOR, "nav>ul>li:nth-last-child(1)")
-        next_page.click()
-        time.sleep(5)
-        cur_url = browser.current_url
-        cars.extend(search_page(browser, cur_url, file, model_uids, ad_ids))
+
+    if only_region:
+        num_cars = int(browser.find_element(By.CLASS_NAME, "page-title-count-wQ7pG").text)
+        last_page = num_cars // 50
+        if last_page == 0:
+            cars = search_page(browser, url, file, model_uids, ad_ids, num_cars=num_cars)
+        else:
+            cars = search_page(browser, url, file, model_uids, ad_ids)
+            print(cars)
+            for i in range(int(last_page) - 2):
+                pagen = browser.find_element(By.CLASS_NAME, "pagination-pagination-_FSNE")
+                next_page = pagen.find_element(By.CSS_SELECTOR, "nav>ul>li:nth-last-child(1)")
+                next_page.click()
+                time.sleep(5)
+                cur_url = browser.current_url
+                cars.extend(search_page(browser, cur_url, file, model_uids, ad_ids))
+            pagen = browser.find_element(By.CLASS_NAME, "pagination-pagination-_FSNE")
+            next_page = pagen.find_element(By.CSS_SELECTOR, "nav>ul>li:nth-last-child(1)")
+            next_page.click()
+            time.sleep(5)
+            cur_url = browser.current_url
+            cars.extend(search_page(browser, cur_url, file, model_uids, ad_ids, num_cars=num_cars % 50))
+    else:
+        last_page = pagen.find_element(By.CSS_SELECTOR, "nav>ul>li:nth-last-child(2)").text
+        cars = search_page(browser, url, file, model_uids, ad_ids)
+        print(cars)
+        for i in range(int(last_page)-1):
+            pagen = browser.find_element(By.CLASS_NAME, "pagination-pagination-_FSNE")
+            next_page = pagen.find_element(By.CSS_SELECTOR, "nav>ul>li:nth-last-child(1)")
+            next_page.click()
+            time.sleep(5)
+            cur_url = browser.current_url
+            cars.extend(search_page(browser, cur_url, file, model_uids, ad_ids))
     return cars
 
 
 def new_df(data):
     columns = ["vin", "is_owner", "is_promo", "region", "city", "brand", "model", "year", "mileage", "count_owners",
-               "air condition", "color", "price", "en_capacity", "en_type", "en_power", "num_cylinders",
+               "air_condition", "color", "price", "en_capacity", "en_type", "en_power", "num_cylinders",
                "fuel_waste_mix", "body_type", "modification", "num_doors", "gearbox_type", "wheel_drive",
                "steering_wheel", "link", "ad_date", "avito_id", "model_uid"]  # add link and date
     table_cars = pd.DataFrame(data=data, columns=columns)
-    table_cars.to_csv("result.csv", sep=";", index=False)
+    table_cars.to_csv("result.csv", sep=";", index=False, encoding="utf-8")
 
 
 with webdriver.Chrome(options=chrome_options) as browser:
+    url32 = "https://www.avito.ru/bryanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1"
+    few_urls = {32: 'https://www.avito.ru/bryanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
+                46: 'https://www.avito.ru/kurskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1'}
     browser.maximize_window()
     height_window = browser.execute_script("return window.innerHeight")
-    data = through_pages(browser, url, file)
+    data = through_pages(browser, url32, file, only_region=False)
+
     new_df(data)
     print("Success!")
