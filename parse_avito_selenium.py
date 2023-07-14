@@ -13,8 +13,8 @@ import random
 user_way = "C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Default"
 proxy = "51.159.212.239:80"
 chrome_options = webdriver.ChromeOptions()
-# chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Default")
-chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Profile 1")
+chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Default")
+# chrome_options.add_argument("user-data-dir=C:\\Users\Александр\AppData\Local\Google\Chrome\\User Data\Profile 1")
 chrome_options.add_experimental_option("useAutomationExtension", False)
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
 # chrome_options.add_argument("--proxy-server=%s" % proxy)
@@ -296,12 +296,12 @@ def new_df(data):
 
 
 with webdriver.Chrome(options=chrome_options) as browser:
-    url32 = "https://www.avito.ru/bryanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1"
-    few_urls = {32: 'https://www.avito.ru/bryanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-                46: 'https://www.avito.ru/kurskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1'}
+    url73 = "https://www.avito.ru/ulyanovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&localPriority=1&user=1"
+    few_urls = {13: 'https://www.avito.ru/mordoviya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
+                73: 'https://www.avito.ru/ulyanovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&localPriority=1&user=1'}
     browser.maximize_window()
     height_window = browser.execute_script("return window.innerHeight")
-    data = through_pages(browser, url32, file, only_region=False)
+    data = through_pages(browser, url73, file, only_region=False)
 
     new_df(data)
     print("Success!")
