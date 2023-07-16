@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import transliterate as trsl
+import re
 
 
 regions = {'01': 'Республика Адыгея', '02': 'Республика Башкортостан', '03': 'Республика Бурятия',
@@ -30,23 +32,86 @@ regions = {'01': 'Республика Адыгея', '02': 'Республик�
 
 
 def check_regions(df):
-    wrong_reg = df[~df["region"].isin(regions.values())]
-    right_reg = df[df["region"].isin(regions.values())]
-    reg_is_city = wrong_reg[wrong_reg["region"].isin(right_reg["city"].unique())]
+    reg_names = regions.values()
+    wrong_reg = df[~df["region"].isin(reg_names)]
 
+    # find and fix rows with wrong named regions: in "region - count" format
+    wrong_reg["new"] = wrong_reg["region"].str.split(" — ").str[0]
+    for reg in regions.values():
+        for name in wrong_reg.new.unique():
+            if reg.startswith(name):
+                i_short = wrong_reg[wrong_reg["new"] == name].index
+                df.loc[i_short, "region"] = reg
+    wrong_reg = df[~df["region"].isin(reg_names)]
+    right_reg = df[df["region"].isin(reg_names)]
+    correct_cities = right_reg["city"].unique()
+
+    # find and fix rows with shifted location: region is city, city is street
+    reg_is_city = wrong_reg[wrong_reg["region"].isin(right_reg["city"].unique())]
+    df.loc[reg_is_city.index, "city"] = df.loc[reg_is_city.index, "region"]
+    for i in reg_is_city.index:
+        correct_reg = right_reg[right_reg["city"] == reg_is_city.loc[i, "region"]]["region"].unique()
+        if len(correct_reg) == 1:
+            df.loc[i, "region"] = correct_reg[0]
+    wrong_reg = df[~df["region"].isin(reg_names)]
+    right_reg = df[df["region"].isin(reg_names)]
+
+    # find and fix all the other rows using city in url
+    wrong_reg.loc[:, "new"] = wrong_reg["link"].str.split("/").str[3].map(lambda x: trsl.translit(x, "ru"))
+    wrong_reg.loc[:, "new"] = wrong_reg.new.map(lambda word: word[:-1] + "й" if word[-2:] == "ыы" else word)
+    wrong_reg.loc[:, "new"] = wrong_reg.new.map(lambda word: word[:-1] + "й" if word[-2:] == "иы" else word)
+    wrong_reg.loc[:, "new"] = wrong_reg.new.map(lambda word: re.sub(r"ыа", "я", word))
+    for i in wrong_reg.index:
+        if wrong_reg.loc[i, "new"] == "москва":
+            df.loc[i, "city"] = df.loc[i, "region"]
+            df.loc[i, "region"] = "Москва"
+        i_city = np.where(np.char.lower(correct_cities.astype(str)) == wrong_reg.loc[i, "new"])[0]
+        if len(i_city) == 1:
+            df.loc[i, "city"] = correct_cities[i_city[0]]
+            correct_reg = right_reg[right_reg["city"] == df.loc[i, "city"]]["region"].unique()
+            if len(correct_reg) == 1:
+                df.loc[i, "region"] = correct_reg[0]
+        else:
+            slice = pd.merge(df.loc[i-3:i-1, "region"], df.loc[i+1:i+3, "region"]).iloc[:, 0]
+            if len(slice.unique()) == 1:
+                df.loc[i, "region"] = slice.unique()[0]
+                df.loc[i, "city"] = wrong_reg.loc[i, "new"].capitalize()
+
+
+def check_regions_manual(df):
+    reg_names = regions.values()
+    wrong_reg = df[~df["region"].isin(reg_names)]
+    right_reg = df[df["region"].isin(reg_names)]
+    wrong_reg.loc[:, "new"] = wrong_reg["link"].str.split("/").str[3].map(lambda x: trsl.translit(x, "ru"))
+    for i in wrong_reg.index:
+        city = input(
+            f"Enter the right city. Enter 0 to drop the row. The city name from url is: \n{wrong_reg.loc[i, 'new'].capitalize()}")
+        if city == "0":
+            df.drop(labels=i, inplace=True)
+        else:
+            df.loc[i, "city"] = city
+            correct_reg = right_reg[right_reg["city"] == df.loc[i, "city"]]["region"].unique()
+            if len(correct_reg) == 1:
+                region = input(
+                    f"Enter the right region. Enter 1 if the region is {correct_reg[0]}. Otherwise enter code of the region")
+                if region == "1":
+                    df.loc[i, "region"] = correct_reg[0]
+                else:
+                    df.loc[i, "region"] = regions[int(region)]
+            else:
+                region = input(f"Enter the code of the right region")
+                df.loc[i, "region"] = regions[region]
 
 
 def clean_na(df):
-    df.drop(df[df.isna().all(1)].index, inplace=True)  # remove rows with all NaN
+    df.drop(df[df.isna().all(1)].index, inplace=True)  # delete rows with all NaN
+    print("Removed empty rows")
 
-    for col in ["num_cylinders", "wheel_drive"]: # feel NaN values if all the other modifications of model have only one value
+    # feel NaN values if all the other modifications of model have only one value
+    for col in ["num_cylinders", "wheel_drive"]:
         rows_na_models = df[df[col].isna()][["brand", "model"]].drop_duplicates()
         for i in rows_na_models.index:
             vals = df[(df["brand"] == rows_na_models.loc[i, "brand"]) & (df["model"] == rows_na_models.loc[i, "model"])][col]
             if len(vals.unique()) == 2:
                 df.loc[vals[vals.isna()].index, col] = vals.unique()[~pd.isnull(vals.unique())][0]
-
-
-
-
 
