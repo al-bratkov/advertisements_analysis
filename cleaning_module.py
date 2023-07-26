@@ -100,7 +100,7 @@ def check_regions_manual(df):
                     df.loc[i, "region"] = regions[int(region)]
             else:
                 region = input(f"Enter the code of the right region")
-                df.loc[i, "region"] = regions[region]
+                df.loc[i, "region"] = regions[int(region)]
 
 
 def clean_na(df):
