@@ -32,6 +32,11 @@ regions = {'01': 'Республика Адыгея', '02': 'Республик�
 
 
 def check_regions(df):
+    """
+    Fix errors in values about a city and a region. Right values are important for a future analysis
+    :param df: a dataframe with all information
+    :return: no return. Change the input dataframe
+    """
     reg_names = regions.values()
     wrong_reg = df[~df["region"].isin(reg_names)]
 
@@ -79,6 +84,11 @@ def check_regions(df):
 
 
 def check_regions_manual(df):
+    """
+    Manually fill values about a city and a region haven't been fixed with the check_regions function
+    :param df: a dataframe with all information
+    :return: no return. Change the input dataframe
+    """
     reg_names = regions.values()
     wrong_reg = df[~df["region"].isin(reg_names)]
     right_reg = df[df["region"].isin(reg_names)]
@@ -97,17 +107,25 @@ def check_regions_manual(df):
                 if region == "1":
                     df.loc[i, "region"] = correct_reg[0]
                 else:
-                    df.loc[i, "region"] = regions[int(region)]
+                    df.loc[i, "region"] = regions[region]
             else:
                 region = input(f"Enter the code of the right region")
-                df.loc[i, "region"] = regions[int(region)]
+                df.loc[i, "region"] = regions[region]
 
 
 def clean_na(df):
+    """
+    Clean a dataframe. Delete duplicated and empty rows. Fill NaN values in some important columns
+    :param df: a dataframe with all information
+    :return: no return. Change the input dataframe
+    """
     df.drop(df[df.isna().all(1)].index, inplace=True)  # delete rows with all NaN
-    print("Removed empty rows")
+    print("Empty rows are removed")
+    df.drop_duplicates(inplace=True)
+    df.drop_duplicates("avito_id", inplace=True)
+    print("Duplicated rows are removed")
 
-    # feel NaN values if all the other modifications of model have only one value
+    # feel NaN values if all the other modifications of a model have only one value
     for col in ["num_cylinders", "wheel_drive"]:
         rows_na_models = df[df[col].isna()][["brand", "model"]].drop_duplicates()
         for i in rows_na_models.index:
@@ -115,3 +133,11 @@ def clean_na(df):
             if len(vals.unique()) == 2:
                 df.loc[vals[vals.isna()].index, col] = vals.unique()[~pd.isnull(vals.unique())][0]
 
+    # feel NaN values in the city column
+    empty_city = df[df["city"].isna()]
+    empty_city.loc[:, "new"] = empty_city["link"].str.split("/").str[3].map(lambda x: trsl.translit(x, "ru"))
+    empty_city.loc[:, "new"] = empty_city.new.map(lambda word: word[:-1] + "й" if word[-2:] == "ыы" else word)
+    empty_city.loc[:, "new"] = empty_city.new.map(lambda word: word[:-1] + "й" if word[-2:] == "иы" else word)
+    empty_city.loc[:, "new"] = empty_city.new.map(lambda word: re.sub(r"ыа", "я", word))
+    for i in empty_city.index:
+        df.loc[i, "city"] = empty_city.loc[i, "new"].title()

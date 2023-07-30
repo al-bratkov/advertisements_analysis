@@ -30,21 +30,16 @@ regions = {'01': 'Республика Адыгея', '02': 'Республик�
            '94': 'Территории за пределами РФ, обслуживаемые Департаментом режимных объектов МВД России',
            '95': 'Чеченская Республика'}
 
-table_advertisement = ["avito_id", "fk_car_id", "is_owner", "is_promo", "fk_region_code", "fk_city_id", "link", "ad_date"]
-table_region = ["region_code", "region"]
-table_city = ["city_id", "city", "fk_region_code"]
-table_car = ["car_id", "fk_model_id", "fk_modification_id", "vin", "year", "mileage", "count_owners",
-               "air_condition", "color", "price"]
-table_model = ["model_id", "brand", "model"]
-table_modification = ["modification_id", "fk_model_id", "model_uid", "en_capacity", "en_type", "en_power",
-               "num_cylinders", "fuel_waste_mix", "body_type", "modification", "num_doors", "gearbox_type",
-               "wheel_drive", "steering_wheel"]
-
-schema={"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count", "region": "region",
-        "model": "model", "modification": "modification"}
 
 
 def to_model_db(df, con, schema):
+    """
+    Add information to table 'model'
+    :param df: a dataframe with all information
+    :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+    :param schema: a dict with names of tables in database
+    :return: no return. Change the input dataframe
+    """
     df_model = df[["brand", "model"]].drop_duplicates()
     db_model = pd.read_sql(f"SELECT brand, model FROM {schema['model']}", con)
     db_model["join"] = db_model["brand"].str[:] + "_" + db_model["model"].str[:]
@@ -55,6 +50,13 @@ def to_model_db(df, con, schema):
 
 
 def to_modification_db(df, con, schema):
+    """
+    Add information to table 'modification'
+    :param df: a dataframe with all information
+    :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+    :param schema: a dict with names of tables in database
+    :return: no return. Change the input dataframe
+    """
     df_mod = df[["brand", "model", "model_uid", "en_capacity", "en_type", "en_power",
                  "num_cylinders", "fuel_waste_mix", "body_type", "modification", "num_doors", "gearbox_type",
                  "wheel_drive"]].drop_duplicates()
@@ -71,8 +73,17 @@ def to_modification_db(df, con, schema):
 
 
 def to_car_db(df, con, schema):
+    """
+    Add information to table 'car'
+    :param df: a dataframe with all information
+    :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+    :param schema: a dict with names of tables in database
+    :return: no return. Change the input dataframe
+    """
+    last_car_i = pd.read_sql(f"SELECT MAX(car_id) FROM {schema['car']}", con)["max"][0]
+    df["car_id"] = range(last_car_i+1, last_car_i+1+df.shape[0])
     df_car = df[["brand", "model", "model_uid", "vin", "year", "mileage", "count_owners",
-                 "air_condition", "steering_wheel", "color", "price"]]
+                 "air_condition", "steering_wheel", "color", "price", "car_id"]]
     df_car["model_id"] = df_car["brand"].str[:] + "_" + df_car["model"].str[:]
     db_model = pd.read_sql(f"SELECT * FROM {schema['model']}", con)
     db_model["join"] = db_model["brand"].str[:] + "_" + db_model["model"].str[:]
@@ -80,13 +91,20 @@ def to_car_db(df, con, schema):
     df_car["model_id"].replace(model_i, inplace=True)
     df_car.drop(["brand", "model"], axis=1, inplace=True)
     df_car.columns = ['model_uid', 'vin', 'car_year', 'mileage', 'count_owners', 'is_climate',
-                      'steering_wheel', 'color', 'price', 'model_id']
+                      'steering_wheel', 'color', 'price', 'car_id', 'model_id']
     # need to fix double prices
     df_car.to_sql("car", con, index=False, if_exists="append")
-    return df_car.shape[0]
+    print(f"{df_car.shape[0]} rows are added to the table {schema['car']}")
 
 
 def to_city_db(df, con, schema):
+    """
+    Add information to table 'city'
+    :param df: a dataframe with all information
+    :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+    :param schema: a dict with names of tables in database
+    :return: no return. Change the input dataframe
+    """
     df_city = df[["city", "region"]].drop_duplicates()
     db_region = pd.read_sql(f"SELECT region_code, region FROM {schema['region']}", con)
     region_i = {name: i for i, name in
@@ -96,27 +114,80 @@ def to_city_db(df, con, schema):
     db_city = pd.read_sql(f"SELECT city FROM {schema['city']}", con)
     new_cities = df_city[~df_city["city"].isin(db_city["city"])]
     new_cities.to_sql(schema['city'], con, index=False, if_exists="append")
+    print(f"{new_cities.shape[0]} rows are added to the table {schema['city']}")
 
 
-def to_advertisement_db(df, con, schema, number):
+def to_advertisement_db(df, con, schema):
+    """
+    Add information to table 'advertisement'
+    :param df: a dataframe with all information
+    :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+    :param schema: a dict with names of tables in database
+    :return: no return. Change the input dataframe
+    """
     # need to fix double avito_id
-    df_ad = df[["avito_id", "is_owner", "is_promo", "city", "link", "ad_date"]]
-    df_ad["car_id"] = pd.read_sql(
-        f"SELECT * FROM (SELECT car_id FROM {schema['car']} ORDER BY car_id DESC LIMIT {str(number)}) AS last ORDER BY car_id",
-        con)["car_id"]
+    df_ad = df[["avito_id", "is_owner", "is_promo", "city", "link", "ad_date", "car_id"]]
     db_city = pd.read_sql(f"SELECT city, city_id FROM {schema['city']}", con)
     city_i = {d_m: i for i, d_m in db_city[["city_id", "city"]].set_index("city_id")["city"].to_dict().items()}
     df_ad["city"].replace(city_i, inplace=True)
-    df_ad.columns = ["avito_id", "is_owner", "is_promo", "city", "link", "ad_date", "car_id"]
+    df_ad.columns = ["avito_id", "is_owner", "is_promo", "city_id", "link", "ad_date", "car_id"]
+    df_ad.to_sql("advertisement", con, index=False, if_exists="append")
+    print(f"{df_ad.shape[0]} rows are added to the table {schema['advertisement']}")
+
 
 def to_database(df, auto_db, login, password):
-    con = sql.create_engine(f"postgresql+psycopg2://login:pass@localhost/db")
+    schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
+              "region": "region",
+              "model": "model", "modification": "modification"}
+    con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{auto_db}")
+    to_model_db(df, con, schema)
+    to_modification_db(df, con, schema)
+    to_city_db(df, con, schema)
+    to_car_db(df, con, schema)
+    to_advertisement_db(df, con, schema)
+    print("The dataframe is imported to the database")
 
-    # fill the table 'model'
+
+def id_from_db(con, schema):
+    # con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{auto_db}")
+    avito_id = pd.read_sql(f"SELECT avito_id FROM {schema['advertisement']}", con)
+    uid = pd.read_sql(f"SELECT * FROM {schema['modification']}", con)
+    return {"avito_id": avito_id, "model_uid": uid}
 
 
-    right_uids = {1: "", 63: "2727509782", 164: "2446427534", 167: "2635611458"}  # for NaN and wrong uids
-    # fill the table 'modification'
+def get_all_db(con, schema):
+    query = f"WITH sub_city AS (\
+        SELECT city_id, city, region \
+	    FROM {schema['city']} \
+	    INNER JOIN {schema['region']} \
+	    USING(region_code)), \
+    sub_model AS (SELECT brand, model, model_uid, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, \
+        body_type, modification, num_doors, gearbox_type, wheel_drive \
+	    FROM {schema['model']} \
+	    INNER JOIN {schema['modification']} \
+	    ON fk_model_id = model_id) \
+	SELECT avito_id, vin, brand, model, car_year, mileage, count_owners, is_climate, color, price, steering_wheel, \
+	    is_owner, is_promo, city, region, link, ad_date \
+    FROM {schema['advertisement']} AS ad\
+    INNER JOIN (\
+	SELECT car_id, vin, brand, model, mileage, count_owners, is_climate, color, price, steering_wheel, car_year, \
+	    en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, modification, num_doors, gearbox_type, \
+	    wheel_drive\
+    FROM {schema['car']} \
+	INNER JOIN sub_model\
+    USING(model_uid)) as car_model\
+    USING(car_id)\
+    INNER JOIN sub_city\
+    USING(city_id)"
+    df = pd.read_sql(query, con)
+    return df
 
 
+right_uids = {1: "2888849526", 63: "2727509782", 164: "2446427534", 167: "2635611458"}  # for NaN and wrong uids
+right_price = {511: 289000.00, 874: 195000.00, 1057: 87000.00, 1172: 125000.00, 1233: 165000.00, 1254: 129000.00,
+                   1591: 295000.00}
+double_id = [43, 42, 38, 31, 33, 36, 45, 44, 39, 1, 32]
+schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
+              "region": "region",
+              "model": "model", "modification": "modification"}
 
