@@ -148,8 +148,8 @@ def to_database(df, auto_db, login, password):
     print("The dataframe is imported to the database")
 
 
-def id_from_db(con, schema):
-    # con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{auto_db}")
+def id_from_db(auto_db, login, password):
+    con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{auto_db}")
     avito_id = pd.read_sql(f"SELECT avito_id FROM {schema['advertisement']}", con)
     uid = pd.read_sql(f"SELECT * FROM {schema['modification']}", con)
     return {"avito_id": avito_id, "model_uid": uid}
