@@ -5,7 +5,7 @@ import psycopg2
 
 fed_counts = {0: 'Центральный', 1: 'Северо-Западный', 2: 'Южный', 3: 'Северо-Кавказский', 4: 'Приволжский', 5: 'Уральский', 6: 'Сибирский', 7: 'Дальневосточный'}
 regions = {'01': 'Республика Адыгея', '02': 'Республика Башкортостан', '03': 'Республика Бурятия',
-           '04': 'Республика Алтай (Горный Алтай)', '05': 'Республика Дагестан', '06': 'Республика Ингушетия',
+           '04': 'Республика Алтай', '05': 'Республика Дагестан', '06': 'Республика Ингушетия',
            '07': 'Кабардино-Балкарская Республика', '08': 'Республика Калмыкия', '09': 'Карачаево-Черкесская Республика',
            '10': 'Республика Карелия', '11': 'Республика Коми', '12': 'Республика Марий Эл', '13': 'Республика Мордовия',
            '14': 'Республика Саха (Якутия)', '15': 'Республика Северная Осетия — Алания', '16': 'Республика Татарстан',
@@ -135,7 +135,7 @@ def to_advertisement_db(df, con, schema):
     print(f"{df_ad.shape[0]} rows are added to the table {schema['advertisement']}")
 
 
-def to_database(df, auto_db, login, password):
+def to_database(df, auto_db, login, password, schema):
     schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
               "region": "region",
               "model": "model", "modification": "modification"}
@@ -155,6 +155,13 @@ def id_from_db(auto_db, login, password):
     return {"avito_id": avito_id, "model_uid": uid}
 
 
+def cities_from_db(db, login, password):
+    con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{db}")
+    cities = pd.read_sql(f"SELECT city FROM {schema['city']}", con)
+    return cities
+
+
+
 def get_all_db(con, schema):
     query = f"WITH sub_city AS (\
         SELECT city_id, city, region \
@@ -167,7 +174,8 @@ def get_all_db(con, schema):
 	    INNER JOIN {schema['modification']} \
 	    ON fk_model_id = model_id) \
 	SELECT avito_id, vin, brand, model, car_year, mileage, count_owners, is_climate, color, price, steering_wheel, \
-	    is_owner, is_promo, city, region, link, ad_date \
+	    is_owner, is_promo, city, region, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, \
+        modification, num_doors, gearbox_type, wheel_drive,  link, ad_date \
     FROM {schema['advertisement']} AS ad\
     INNER JOIN (\
 	SELECT car_id, vin, brand, model, mileage, count_owners, is_climate, color, price, steering_wheel, car_year, \
