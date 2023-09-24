@@ -143,8 +143,11 @@ def to_database(df, auto_db, login, password, schema):
     to_model_db(df, con, schema)
     to_modification_db(df, con, schema)
     to_city_db(df, con, schema)
-    to_car_db(df, con, schema)
-    to_advertisement_db(df, con, schema)
+    con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{auto_db}")
+    avito_id = pd.read_sql(f"SELECT avito_id FROM {schema['advertisement']}", con)
+    df_new = df[~df["avito_id"].isin(avito_id.avito_id)]
+    to_advertisement_db(df_new, con, schema)
+    to_car_db(df_new, con, schema)
     print("The dataframe is imported to the database")
 
 
@@ -157,9 +160,8 @@ def id_from_db(auto_db, login, password):
 
 def cities_from_db(db, login, password):
     con = sql.create_engine(f"postgresql+psycopg2://{login}:{password}@localhost/{db}")
-    cities = pd.read_sql(f"SELECT city FROM {schema['city']}", con)
+    cities = pd.read_sql(f"SELECT * FROM {schema['city']}", con)
     return cities
-
 
 
 def get_all_db(con, schema):

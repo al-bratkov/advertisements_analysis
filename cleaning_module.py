@@ -4,6 +4,7 @@ import requests
 import json
 import transliterate as trsl
 import re
+from sklearn.linear_model import LinearRegression, SGDClassifier
 
 from db_module import cities_from_db
 
@@ -158,7 +159,7 @@ def check_regions_manual(df):
     wrong_reg.loc[:, "new"] = wrong_reg["link"].str.split("/").str[3].map(lambda x: trsl.translit(x, "ru"))
     for i in wrong_reg.index:
         city = input(
-            f"Enter the right city. Enter 0 to drop the row. The city name from url is: \n{wrong_reg.loc[i, 'new'].capitalize()}")
+            f"Enter the right city. Enter 0 to drop the row. The city name from url is: \n{wrong_reg.loc[i, 'city'].capitalize()}")
         if city == "0":
             df.drop(labels=i, inplace=True)
         else:
@@ -195,6 +196,14 @@ def clean_na(df, db=None, login=None, password=None, IAM_TOKEN=None, folder_id=N
             vals = df[(df["brand"] == rows_na_models.loc[i, "brand"]) & (df["model"] == rows_na_models.loc[i, "model"])][col]
             if len(vals.unique()) == 2:
                 df.loc[vals[vals.isna()].index, col] = vals.unique()[~pd.isnull(vals.unique())][0]
+    # use K nearest neighbors for all other NaN values
+    classifier = SGDClassifier()
+    cyl_na = df[df.num_cylinders.isna()]
+    cyl_filled = df[~df.num_cylinders.isna()]
+    model = classifier.fit(cyl_filled.en_capacity.values.reshape(-1, 1), y=cyl_filled.num_cylinders.values)
+    cyl_na.loc[:, "num_cylinders"] = model.predict(cyl_na.en_capacity.values.reshape(-1, 1))
+    for i in cyl_na.index:
+        df.loc[i, "num_cylinders"] = cyl_na.loc[i, "num_cylinders"]
 
     # feel NaN values in the city column
     empty_city = df[df["city"].isna()]
@@ -208,7 +217,7 @@ def clean_na(df, db=None, login=None, password=None, IAM_TOKEN=None, folder_id=N
             print(f"{i}: {df.loc[i, 'city']} --> {empty_city.loc[i, 'new'].title()} \#transliterated")
             df.loc[i, "city"] = empty_city.loc[i, "new"].title()
         else:
-            real_city = translate("city" + empty_city.loc[i, "link"].split("/")[3], IAM_TOKEN, folder_id)[6:]
+            real_city = translate(f'city "{empty_city.loc[i, "link"].split("/")[3].title()}"', IAM_TOKEN, folder_id)[6:].strip('"')
             print(f"{i}: {df.loc[i, 'city']} --> {real_city} \#translated")
             df.loc[i, "city"] = real_city
 
@@ -220,4 +229,24 @@ def fix_wrong(df):
     for i in wrong_year_i.index:
         year_url = int(list(filter(lambda txt: len(txt) == 4 and txt.isdigit(), df.loc[i, "new"]))[-1])
         df.loc[i, "year"] = year_url
+
+    # fix wrong fuel waste. Some models have wrong value 1.0. Try to fix it using mean value of other modifications of the model
+    engine = df[['brand', 'model', 'en_capacity', 'en_type', 'en_power', 'num_cylinders', 'fuel_waste_mix']]
+    wrong_waste = df[df.fuel_waste_mix < 2.5]
+    right_waste = df[df.fuel_waste_mix > 2.5]
+    for i in wrong_waste.index:
+        brand = wrong_waste.loc[i, "brand"]
+        model = wrong_waste.loc[i, "model"]
+        df.loc[i, "fuel_waste_mix"] = round(right_waste[(right_waste.brand == brand) &
+              (right_waste.model == model)].fuel_waste_mix.mean(), 2)
+        print(f"{brand} {model} {wrong_waste.loc[i, 'fuel_waste_mix']} ==> {df.loc[i, 'fuel_waste_mix']}")
+    # then fill NaN values using linear regression with engine capacity as a predictor
+    waste_na = df[df.fuel_waste_mix.isna()]
+    waste_filled = df[~df.fuel_waste_mix.isna()]
+    waste_na = waste_na[waste_na.en_capacity <= waste_filled.en_capacity.max()]
+    linereg = LinearRegression()
+    model = linereg.fit(waste_filled.en_capacity.values.reshape(-1, 1), waste_filled.fuel_waste_mix.values)
+    waste_na.loc[:, "fuel_waste_mix"] = model.predict(waste_na.en_capacity.values.reshape(-1, 1))
+    for i in waste_na.index:
+        df.loc[i, "fuel_waste_mix"] = round(waste_na.loc[i, "fuel_waste_mix"])
 
