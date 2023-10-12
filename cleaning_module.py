@@ -196,7 +196,7 @@ def clean_na(df, db=None, login=None, password=None, IAM_TOKEN=None, folder_id=N
             vals = df[(df["brand"] == rows_na_models.loc[i, "brand"]) & (df["model"] == rows_na_models.loc[i, "model"])][col]
             if len(vals.unique()) == 2:
                 df.loc[vals[vals.isna()].index, col] = vals.unique()[~pd.isnull(vals.unique())][0]
-    # use K nearest neighbors for all other NaN values
+    # use linear regression for all other NaN values
     classifier = SGDClassifier()
     cyl_na = df[df.num_cylinders.isna()]
     cyl_filled = df[~df.num_cylinders.isna()]

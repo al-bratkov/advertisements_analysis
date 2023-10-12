@@ -1,56 +1,157 @@
-import parse_avito_selenium as pas
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+from db_module import get_all_db
 
 
-regions_url = {1: 'https://www.avito.ru/adygeya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               2: '', 3: '', 4: '',
-               5: 'https://www.avito.ru/dagestan/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               6: 'https://www.avito.ru/ingushetiya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               7: 'https://www.avito.ru/kabardino-balkariya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               8: 'https://www.avito.ru/kalmykiya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               9: 'https://www.avito.ru/karachaevo-cherkesiya/avtomobili?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJA4LYNFKaKNKbaDhQC&user=1',
-               10: '', 11: '', 12: '',
-               13: 'https://www.avito.ru/mordoviya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               14: '',
-               15: 'https://www.avito.ru/severnaya_osetiya/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               16: '', 17: '', 18: '', 19: '', 20: '', 21: '', 22: '',
-               23: 'https://www.avito.ru/krasnodarskiy_kray/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               24: '', 25: '',
-               26: '"https://www.avito.ru/stavropolskiy_kray/avtomobili?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJA4LYNFKaKNKbaDhQC&user=1"',
-               27: '', 28: '', 29: '',
-               30: 'https://www.avito.ru/astrahanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               31: 'https://www.avito.ru/belgorodskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               32: 'https://www.avito.ru/bryanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               33: '',
-               34: 'https://www.avito.ru/volgogradskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               35: '',
-               36: 'https://www.avito.ru/voronezhskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               37: '', 38: '', 39: '', 40: '',
-               41: '', 42: '', 43: '', 44: '', 45: '',
-               46: 'https://www.avito.ru/kurskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               47: '',
-               48: 'https://www.avito.ru/lipetskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               49: '',
-               50: 'https://www.avito.ru/moskovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               51: '', 52: '', 53: '',
-               54: '', 55: '', 56: '',
-               57: 'https://www.avito.ru/orlovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               58: '', 59: '', 60: '',
-               61: 'https://www.avito.ru/rostovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               62: 'https://www.avito.ru/ryazanskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               63: 'https://www.avito.ru/samarskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               64: 'https://www.avito.ru/saratovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               65: '', 66: '',
-               67: '',
-               68: 'https://www.avito.ru/tambovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               69: '', 70: '',
-               71: 'https://www.avito.ru/tulskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               72: '',
-               73: 'https://www.avito.ru/ulyanovskaya_oblast/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&localPriority=1&user=1',
-               74: '', 75: '', 76: '',
-               77: 'https://www.avito.ru/moskva/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&radius=75&searchRadius=75&user=1',
-               78: '', 79: '',
-               80: '', 81: '',
-               82: 'https://www.avito.ru/respublika_krym/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1',
-               83: '', 84: '', 85: '', 86: '', 87: '', 88: '', 89: '', 90: '',
-               95: 'https://www.avito.ru/chechenskaya_respublika/avtomobili/s_probegom-ASgBAgICAUSGFMjmAQ?cd=1&f=ASgBAQICA0TyCrCKAYYUyOYB~vAP6Lv3AgJAptoOFAKE0RIUssnaEQ&user=1'}
+schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
+              "region": "region", "brand": "brand", "model": "model", "modification": "modification"}
+
+def get_values_for_html_form(df, schema):
+    form = {}
+    form["brands"] = tuple(['Не имеет значения', ].extend(df[schema["brand"]].unique()))
+    form["bodies"] = tuple(df[schema["body_type"]].unique())
+    form["colors"] = tuple(df[schema["color"]].unique())
+    form["miles"] = 1_000_000
+    form["year"] = 1936
+    form["owners"] = ('Не имеет значения', '1', '2', '3', '4+')
+    form["gearboxes"] = ('Не имеет значения', 'Механика', 'Робот', 'Вариатор', 'Автомат')
+    form["power"] = 26, 315
+    form["wheel_drives"] = ('Не имеет значения', 'Передний', 'Полный', 'Задний')
+    form["steering_wheels"] = ('Не имеет значения', 'Левый', 'Правый')
+    form["engines"] = ('Не имеет значения', 'Бензин', 'Дизель', 'Газ')
+    return form
+
+
+def get_models_for_brand(df, brand, schema):
+    pass
+
+
+def get_features_for_model(df, brand, model, schema):
+    pass
+
+training_cols = ["brand", "model", "car_year", "mileage", "count_owners", "body_type", "gearbox_type", "en_power", "gearbox_type", "wheel_drive", "en_type", "is_climate", "color", "price"]
+
+
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    features = get_values_for_html_form(df, schema)
+    def do_GET(self):
+        # Отправляем заголовки ответа
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        # Отправляем html страницу с выпадающими списками и кнопкой отправки
+        html = f"""
+        <html>
+            <head>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <form action="/" method="post">
+                    <label for="brand">Выберите бренд:</label>
+                    <select id="brand" name="brand">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in features["brands"]])}
+                    </select>
+                    <br>
+
+                    <label for="model">Выберите модель:</label>
+                    <select id="model" name="model">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in brands])}
+                    </select>
+                    <br>
+
+
+                    <label for="year_sign">Выберите максимальный(минимальный)год производства:</label>
+                    <input type="radio" id="yonger" name="year_sign" value="yonger" />
+                        <label for="yonger">Моложе</label>
+                    <input type="radio" id="older" name="year_sign" value="older" />
+                        <label for="older">Старше</label>
+                        <input id="year" name="year" type="number" min=1936 max=2023>
+                    <br>   
+
+                     <label for="mileage">Выберите максимальный пробег:</label>
+                        <input id="mileage" name="mileage" type="number" min=0 max=1000000>
+                    <br>                          
+
+                    <label for="owners">Выберите максимально возможное количество владельцев:</label>
+                    <select id="owners" name="owners">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in brands])}
+                    </select>
+                    <br>
+
+                    <label for="body_type">Выберите тип кузова:</label>
+                    <select id="body_type" name="body_type">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in brands])}
+                    </select>
+                    <br>
+
+                    <label for="wheel_drive">Выберите тип привода:</label>
+                    <select id="wheel_drive" name="wheel_drive">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in brands])}
+                    </select>
+                    <br>     
+
+                    <label for="steering_wheel">Выберите модель:</label>
+                    <select id="steering_wheel" name="steering_wheel">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in brands])}
+                    </select>
+                    <br>                         
+
+                    <label for="power">Укажите максимальное (минимальное) количество лошадиных сил:</label>
+                    <input type="radio" id="less" name="power_sign" value="less" />
+                        <label for="less">Меньше</label>
+                    <input type="radio" id="more" name="power_sign" value="more" />
+                        <label for="more">Больше</label>                    
+                        <input id="power" name="power" type="number" min=20 max=315>
+                    <br>                       
+
+                    <label for="gearbox">Выберите тип коробки передач:</label>
+                    <select id="gearbox" name="gearbox">
+                        {"".join([f"<option value='{brand}'>{brand}</option>" for brand in brands])}
+                    </select>
+                    <br>                                    
+
+
+                    <label for="color">Выберите цвет:</label>
+                    <select id="color" name="color">
+                        {"".join([f"<option value='{color}'>{color}</option>" for color in colors])}
+                    </select>
+                    <br>
+                    <input type="submit" value="Отправить">
+                </form>
+            </body>
+        </html>
+        """
+        self.wfile.write(html.encode('utf-8'))
+
+    def do_POST(self):
+        # Считываем данные из тела запроса
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf-8')
+        print(post_data)
+
+        # Парсим данные из строки запроса и сохраняем в переменную result
+        result = {var.split("=")[0]: var.split("=")[1] for var in post_data.split("&")}
+
+        # Отправляем заголовки ответа
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        # Отправляем html страницу с сообщением об успешной отправке данных
+        html = """
+        <html>
+            <body>
+                <h1>Данные успешно отправлены!</h1>
+            </body>
+        </html>
+        """
+        self.wfile.write(html.encode('utf-8'))
+
+
+if __name__ == '__main__':
+    server_address = ('', 8000)
+    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    print('Server running at http://localhost:8000')
+    httpd.serve_forever()
 
