@@ -1,7 +1,12 @@
 import pandas as pd
 import numpy as np
+import requests
+import json
 import transliterate as trsl
 import re
+from sklearn.linear_model import LinearRegression, SGDClassifier
+
+from db_module import cities_from_db
 
 
 regions = {'01': 'Республика Адыгея', '02': 'Республика Башкортостан', '03': 'Республика Бурятия',
@@ -31,7 +36,33 @@ regions = {'01': 'Республика Адыгея', '02': 'Республик�
            '95': 'Чеченская Республика'}
 
 
-def check_regions(df):
+def translate(text, IAM_TOKEN, folder_id):
+    """
+    Translates text from url with Yandex translate API.
+    More information how to use it: https://cloud.yandex.ru/docs/translate/api-ref/authentication
+    :param text: string for translating
+    :param IAM_TOKEN: Token getting on Yandex Cloud. Need to enter 'yc iam create-token' in cmd to get IAM token
+    :param folder_id: id of a folder on Yandex Cloud
+    :return: Translated text
+    """
+    target_language = 'ru'
+    body = {"targetLanguageCode": target_language,
+            "texts": text,
+            "folderId": folder_id,}
+    headers = {"Content-Type": "application/json",
+               "Authorization": "Bearer {0}".format(IAM_TOKEN)}
+    response = requests.post('https://translate.api.cloud.yandex.net/translate/v2/translate',
+                             json=body,
+                             headers=headers)
+    res = json.loads(response.text)
+    return res["translations"][0]["text"].title()
+
+
+class DfMess:
+    pass
+
+
+def check_regions(df, db=None, login=None, password=None, IAM_TOKEN= None, folder_id=None):
     """
     Fix errors in values about a city and a region. Right values are important for a future analysis
     :param df: a dataframe with all information
@@ -50,14 +81,37 @@ def check_regions(df):
     wrong_reg = df[~df["region"].isin(reg_names)]
     right_reg = df[df["region"].isin(reg_names)]
     correct_cities = right_reg["city"].unique()
+    if db is not None:
+        inf_db_city = cities_from_db(db, login, password)
+        correct_cities_db = inf_db_city["city"].values
+        correct_cities = np.unique(np.concatenate((correct_cities, correct_cities_db)))
 
     # find and fix rows with shifted location: region is city, city is street
-    reg_is_city = wrong_reg[wrong_reg["region"].isin(right_reg["city"].unique())]
+    reg_is_city = wrong_reg[wrong_reg["region"].isin(correct_cities)]
     df.loc[reg_is_city.index, "city"] = df.loc[reg_is_city.index, "region"]
     for i in reg_is_city.index:
         correct_reg = right_reg[right_reg["city"] == reg_is_city.loc[i, "region"]]["region"].unique()
         if len(correct_reg) == 1:
             df.loc[i, "region"] = correct_reg[0]
+        elif len(correct_reg) == 0 and db is not None:
+            correct_reg = inf_db_city[inf_db_city["city"] == reg_is_city.loc[i, "region"]]["region_code"].values
+            if len(correct_reg) == 1:
+                df.loc[i, "region"] = regions[str(correct_reg[0])]
+    wrong_reg = df[~df["region"].isin(reg_names)]
+    right_reg = df[df["region"].isin(reg_names)]
+
+    # find and fix rows with a correct city and a wrong region
+    for i in wrong_reg.index:
+        i_city = np.where(correct_cities.astype(str) == wrong_reg.loc[i, "city"])[0]
+        if len(i_city) == 1:
+            df.loc[i, "city"] = correct_cities[i_city[0]]
+            correct_reg = right_reg[right_reg["city"] == df.loc[i, "city"]]["region"].unique()
+            if len(correct_reg) == 1:
+                df.loc[i, "region"] = correct_reg[0]
+            elif len(correct_reg) == 0 and db is not None:
+                correct_reg = inf_db_city[inf_db_city["city"] == wrong_reg.loc[i, "city"]]["region_code"].values
+                if len(correct_reg) == 1:
+                    df.loc[i, "region"] = regions[str(correct_reg[0])]
     wrong_reg = df[~df["region"].isin(reg_names)]
     right_reg = df[df["region"].isin(reg_names)]
 
@@ -72,15 +126,25 @@ def check_regions(df):
             df.loc[i, "region"] = "Москва"
         i_city = np.where(np.char.lower(correct_cities.astype(str)) == wrong_reg.loc[i, "new"])[0]
         if len(i_city) == 1:
+            print(f"{i}: {df.loc[i, 'city']} --> {correct_cities[i_city[0]]} \#transliterated")
             df.loc[i, "city"] = correct_cities[i_city[0]]
             correct_reg = right_reg[right_reg["city"] == df.loc[i, "city"]]["region"].unique()
             if len(correct_reg) == 1:
                 df.loc[i, "region"] = correct_reg[0]
+            elif len(correct_reg) == 0 and db is not None:
+                correct_reg = inf_db_city[inf_db_city["city"].str.lower() == wrong_reg.loc[i, "new"]]["region_code"].values
+                if len(correct_reg) == 1:
+                    df.loc[i, "region"] = regions[str(correct_reg[0])]
         else:
-            slice = pd.merge(df.loc[i-3:i-1, "region"], df.loc[i+1:i+3, "region"]).iloc[:, 0]
-            if len(slice.unique()) == 1:
-                df.loc[i, "region"] = slice.unique()[0]
-                df.loc[i, "city"] = wrong_reg.loc[i, "new"].capitalize()
+            real_city = translate("city " + wrong_reg.loc[i, "link"].split("/")[3], IAM_TOKEN, folder_id)[6:]
+            if real_city != wrong_reg.loc[i, "new"]:
+                print(f"{i}: {df.loc[i, 'city']} --> {real_city} \#translated")
+                df.loc[i, "city"] = real_city
+#            else:
+#                slice = pd.merge(df.loc[i-3:i-1, "region"], df.loc[i+1:i+3, "region"]).iloc[:, 0]
+#                if len(slice.unique()) == 1:
+#                    df.loc[i, "region"] = slice.unique()[0]
+#                    df.loc[i, "city"] = wrong_reg.lowc[i, "new"].capitalize()
 
 
 def check_regions_manual(df):
@@ -95,7 +159,7 @@ def check_regions_manual(df):
     wrong_reg.loc[:, "new"] = wrong_reg["link"].str.split("/").str[3].map(lambda x: trsl.translit(x, "ru"))
     for i in wrong_reg.index:
         city = input(
-            f"Enter the right city. Enter 0 to drop the row. The city name from url is: \n{wrong_reg.loc[i, 'new'].capitalize()}")
+            f"Enter the right city. Enter 0 to drop the row. The city name from url is: \n{wrong_reg.loc[i, 'city'].capitalize()}")
         if city == "0":
             df.drop(labels=i, inplace=True)
         else:
@@ -113,7 +177,7 @@ def check_regions_manual(df):
                 df.loc[i, "region"] = regions[region]
 
 
-def clean_na(df):
+def clean_na(df, db=None, login=None, password=None, IAM_TOKEN=None, folder_id=None):
     """
     Clean a dataframe. Delete duplicated and empty rows. Fill NaN values in some important columns
     :param df: a dataframe with all information
@@ -132,6 +196,14 @@ def clean_na(df):
             vals = df[(df["brand"] == rows_na_models.loc[i, "brand"]) & (df["model"] == rows_na_models.loc[i, "model"])][col]
             if len(vals.unique()) == 2:
                 df.loc[vals[vals.isna()].index, col] = vals.unique()[~pd.isnull(vals.unique())][0]
+    # use K nearest neighbors for all other NaN values
+    classifier = SGDClassifier()
+    cyl_na = df[df.num_cylinders.isna()]
+    cyl_filled = df[~df.num_cylinders.isna()]
+    model = classifier.fit(cyl_filled.en_capacity.values.reshape(-1, 1), y=cyl_filled.num_cylinders.values)
+    cyl_na.loc[:, "num_cylinders"] = model.predict(cyl_na.en_capacity.values.reshape(-1, 1))
+    for i in cyl_na.index:
+        df.loc[i, "num_cylinders"] = cyl_na.loc[i, "num_cylinders"]
 
     # feel NaN values in the city column
     empty_city = df[df["city"].isna()]
@@ -139,5 +211,42 @@ def clean_na(df):
     empty_city.loc[:, "new"] = empty_city.new.map(lambda word: word[:-1] + "й" if word[-2:] == "ыы" else word)
     empty_city.loc[:, "new"] = empty_city.new.map(lambda word: word[:-1] + "й" if word[-2:] == "иы" else word)
     empty_city.loc[:, "new"] = empty_city.new.map(lambda word: re.sub(r"ыа", "я", word))
+    cities_db = cities_from_db(db, login, password)["city"].values
     for i in empty_city.index:
-        df.loc[i, "city"] = empty_city.loc[i, "new"].title()
+        if empty_city.loc[i, "new"].title() in cities_db:
+            print(f"{i}: {df.loc[i, 'city']} --> {empty_city.loc[i, 'new'].title()} \#transliterated")
+            df.loc[i, "city"] = empty_city.loc[i, "new"].title()
+        else:
+            real_city = translate(f'city "{empty_city.loc[i, "link"].split("/")[3].title()}"', IAM_TOKEN, folder_id)[6:].strip('"')
+            print(f"{i}: {df.loc[i, 'city']} --> {real_city} \#translated")
+            df.loc[i, "city"] = real_city
+
+
+def fix_wrong(df):
+    # fix wrong year. There is an error with a year. Instead of real value df get current year. The right year is in the link
+    df["new"] = df["link"].str.split("/").str[-1].str.split("_")
+    wrong_year_i = df[df["year"] >= 2023]
+    for i in wrong_year_i.index:
+        year_url = int(list(filter(lambda txt: len(txt) == 4 and txt.isdigit(), df.loc[i, "new"]))[-1])
+        df.loc[i, "year"] = year_url
+
+    # fix wrong fuel waste. Some models have wrong value 1.0. Try to fix it using mean value of other modifications of the model
+    engine = df[['brand', 'model', 'en_capacity', 'en_type', 'en_power', 'num_cylinders', 'fuel_waste_mix']]
+    wrong_waste = df[df.fuel_waste_mix < 2.5]
+    right_waste = df[df.fuel_waste_mix > 2.5]
+    for i in wrong_waste.index:
+        brand = wrong_waste.loc[i, "brand"]
+        model = wrong_waste.loc[i, "model"]
+        df.loc[i, "fuel_waste_mix"] = round(right_waste[(right_waste.brand == brand) &
+              (right_waste.model == model)].fuel_waste_mix.mean(), 2)
+        print(f"{brand} {model} {wrong_waste.loc[i, 'fuel_waste_mix']} ==> {df.loc[i, 'fuel_waste_mix']}")
+    # then fill NaN values using linear regression with engine capacity as a predictor
+    waste_na = df[df.fuel_waste_mix.isna()]
+    waste_filled = df[~df.fuel_waste_mix.isna()]
+    waste_na = waste_na[waste_na.en_capacity <= waste_filled.en_capacity.max()]
+    linereg = LinearRegression()
+    model = linereg.fit(waste_filled.en_capacity.values.reshape(-1, 1), waste_filled.fuel_waste_mix.values)
+    waste_na.loc[:, "fuel_waste_mix"] = model.predict(waste_na.en_capacity.values.reshape(-1, 1))
+    for i in waste_na.index:
+        df.loc[i, "fuel_waste_mix"] = round(waste_na.loc[i, "fuel_waste_mix"])
+
