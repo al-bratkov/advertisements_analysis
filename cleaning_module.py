@@ -223,6 +223,11 @@ def clean_na(df, db=None, login=None, password=None, IAM_TOKEN=None, folder_id=N
 
 
 def fix_wrong(df):
+    """
+    Fix some common wrong values in columns 'year' and 'fuel_waste_mix'
+    :param df: a dataframe with all information
+    :return: no return. Change the input dataframe
+    """
     # fix wrong year. There is an error with a year. Instead of real value df get current year. The right year is in the link
     df["new"] = df["link"].str.split("/").str[-1].str.split("_")
     wrong_year_i = df[df["year"] >= 2023]

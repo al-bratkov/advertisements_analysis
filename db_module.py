@@ -165,6 +165,12 @@ def cities_from_db(db, login, password):
 
 
 def get_all_db(con, schema):
+    """
+    Download all values from the database
+    :param con: connection SQLAlchemy object for postgreSQL
+    :param schema: the dictionary for connection names in the code and the database
+    :return: DataFrame
+    """
     query = f"WITH sub_city AS (\
         SELECT city_id, city, region \
 	    FROM {schema['city']} \
@@ -193,10 +199,6 @@ def get_all_db(con, schema):
     return df
 
 
-right_uids = {1: "2888849526", 63: "2727509782", 164: "2446427534", 167: "2635611458"}  # for NaN and wrong uids
-right_price = {511: 289000.00, 874: 195000.00, 1057: 87000.00, 1172: 125000.00, 1233: 165000.00, 1254: 129000.00,
-                   1591: 295000.00}
-double_id = [43, 42, 38, 31, 33, 36, 45, 44, 39, 1, 32]
 schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
               "region": "region",
               "model": "model", "modification": "modification"}
