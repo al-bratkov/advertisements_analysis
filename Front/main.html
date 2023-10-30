@@ -1,17 +1,149 @@
-<html>
-<body>
-<h1>Test title</h1>
-<form>
-    <fieldset>
-    <legend>Standard controls</legend>
-    <select name="1A" id="select" autocomplete="off" required>
-      <option>Carrots</option>
-      <option>Peas</option>
-      <option>Beans</option>
-      <option>Pneumonoultramicroscopicsilicovolcanoconiosis</option>
-    </select>
-  </fieldset>
-</form>
-<p>some text to try</p>
-</body>
-</html>
+
+        <html>
+            <head>
+                <meta charset="UTF-8">
+            <style>
+                {}
+            </style>
+            </head>
+            <body>
+                <form action="/" method="post">
+                    <label for="brand">Выберите бренд:</label>
+                    <br>
+                    <select id="brand" name="brand" onchange="document.getElementById('model').classList.toggle('disabled', this.value === 'does not matter')">
+                        {}
+                    </select>
+                    <br>
+
+                    <label for="model">Выберите модель:</label>
+                    <br>
+                    <select id="model" name="model"  onchange="document.getElementById('body').classList.toggle('disabled', this.value === '')">
+                        {}
+                    </select>
+                    <br>
+
+                    <label for="car_year">Выберите максимальный(минимальный)год производства:</label>
+                    <br>
+                    <input type="radio" id="younger" name="year_sign" value="yonger" checked="checked"/>
+                        <label for="younger">Моложе</label>
+                    <input type="radio" id="older" name="year_sign" value="older" />
+                        <label for="older">Старше</label>
+                        <input id="car_year" name="car_year" type="number" min=1936 max=2023>
+                    <br>
+
+                    <label for="mileage">Выберите максимальный пробег:</label>
+                    <br>
+                        <input id="mileage" name="mileage" type="number" min=0 max=1000000>
+                    <br>
+
+
+                    <label for="owners">Выберите максимально возможное количество владельцев:</label>
+                    <br>
+                    <select id="owners" name="owners">
+                        {}
+                    </select>
+                    <br>
+
+                    <label for="bodyt">Выберите тип кузова:</label>
+                    <br>
+                    <select id="bodyt" name="bodyt">
+                        {}
+                    </select>
+                    <br>
+
+                    <label for="wheel_drive">Выберите тип привода:</label>
+                    <br>
+                    <select id="wheel_drive" name="wheel_drive">
+                        {}
+                    </select>
+                    <br>
+
+                    <label for="steering_wheel">Выберите тип рулевого управления:</label>
+                    <br>
+                    <select id="steering_wheel" name="steering_wheel">
+                        {}
+                    </select>
+                    <br>
+
+                    <label for="power">Укажите максимальное (минимальное) количество лошадиных сил:</label>
+                    <br>
+                    <input type="radio" id="less" name="power_sign" value="less" checked="checked"/>
+                        <label for="less">Меньше</label>
+                    <input type="radio" id="more" name="power_sign" value="more" />
+                        <label for="more">Больше</label>
+                        <input id="power" name="power" type="number" min=20 max=315>
+                    <br>
+
+                    <label for="gearbox">Выберите тип коробки передач:</label>
+                    <br>
+                    <select id="gearbox" name="gearbox">
+                        {}
+                    </select>
+                    <br>
+
+
+                    <label for="color">Выберите цвет:</label>
+                    <br>
+                    <select id="color" name="color">
+                        {}
+                    </select>
+                    <br>
+
+                    <input type="radio" id="true" name="is_climate" value="true" />
+                        <label for="True">Да</label>
+                    <input type="radio" id="false" name="is_climate" value="false" checked="checked"/>
+                        <label for="False">Нет</label>
+                    <br>
+
+                    <input type="submit" value="Отправить">
+                </form>
+            <script>
+                // Получаем элементы выпадающих списков из DOM
+                const brandSelect = document.getElementById('brand');
+                const modelSelect = document.getElementById('model');
+                const bodySelect = document.getElementById('bodyt');
+
+                // Определяем значения для каждого списка
+                const models = {};
+                const bodies = {};
+
+                // Добавляем обработчики событий на изменение значений списка "Бренд"
+                brandSelect.addEventListener('change', () => {{
+                    // Получаем список моделей, соответствующий выбранному бренду
+                    const modelsList = models[brandSelect.value];
+                    // Очищаем список моделей
+                    while (modelSelect.firstChild) {{
+                        modelSelect.removeChild(modelSelect.firstChild);
+                    }}
+                    // Добавляем новые значения в список моделей
+                    for (let i = 0; i < modelsList.length; i++) {{
+                        const option = document.createElement('option');
+                        option.value = modelsList[i];
+                        option.text = modelsList[i];
+                        modelSelect.appendChild(option);
+                    }}
+                    // Добавляем/удаляем класс "disabled" в зависимости от выбранного значения бренда
+                    modelSelect.classList.toggle('disabled', brandSelect.value === 'does not matter');
+                }});
+
+                // Добавляем обработчики событий на изменение значений списка "Модель"
+                modelSelect.addEventListener('change', () => {{
+                    // Получаем список кузовов, соответствующий выбранной модели
+                    const bodiesList = bodies[modelSelect.value];
+                    // Очищаем список кузовов
+                    while (bodySelect.firstChild) {{
+                        bodySelect.removeChild(bodySelect.firstChild);
+                    }}
+                    // Добавляем новые значения в список кузовов
+                    for (let i = 0; i < bodiesList.length; i++) {{
+                        const option = document.createElement('option');
+                        option.value = bodiesList[i];
+                        option.text = bodiesList[i];
+                        bodySelect.appendChild(option);
+                    }}
+                    // Добавляем/удаляем класс "disabled" в зависимости от выбранного значения модели
+                    bodySelect.classList.toggle('disabled', modelSelect.value === 'does not matter');
+                }});
+            </script>
+            </body>
+        </html>
