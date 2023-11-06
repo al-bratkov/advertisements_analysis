@@ -2,12 +2,9 @@
         <html>
             <head>
                 <meta charset="UTF-8">
-            <style>
-                {}
-            </style>
             </head>
             <body>
-                <form action="/" method="post">
+                <form action="/" method="post" accept-charset="UTF-8">
                     <label for="brand">Выберите бренд:</label>
                     <br>
                     <select id="brand" name="brand" onchange="document.getElementById('model').classList.toggle('disabled', this.value === 'does not matter')">
@@ -37,16 +34,16 @@
                     <br>
 
 
-                    <label for="owners">Выберите максимально возможное количество владельцев:</label>
+                    <label for="count_owners">Выберите максимально возможное количество владельцев:</label>
                     <br>
-                    <select id="owners" name="owners">
+                    <select id="count_owners" name="count_owners">
                         {}
                     </select>
                     <br>
 
-                    <label for="bodyt">Выберите тип кузова:</label>
+                    <label for="body_type">Выберите тип кузова:</label>
                     <br>
-                    <select id="bodyt" name="bodyt">
+                    <select id="body_type" name="body_type">
                         {}
                     </select>
                     <br>
@@ -101,7 +98,7 @@
                 // Получаем элементы выпадающих списков из DOM
                 const brandSelect = document.getElementById('brand');
                 const modelSelect = document.getElementById('model');
-                const bodySelect = document.getElementById('bodyt');
+                const bodySelect = document.getElementById('body_type');
 
                 // Определяем значения для каждого списка
                 const models = {};

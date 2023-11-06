@@ -199,7 +199,60 @@ def get_all_db(con, schema):
     return df
 
 
+class FromDB:
+    def __init__(self, login, password, database_name):
+        self.login = login
+        self.password = password
+        self.database_name = database_name
+        self.con = sql.create_engine(
+            f"postgresql+psycopg2://{self.login}:{self.password}@localhost/{self.database_name}")
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, new_password):
+        self._password = new_password
+
+
+    def get_all_db(self, schema):
+        """
+            Download all values from the database
+            :param con: connection SQLAlchemy object for postgreSQL
+            :param schema: the dictionary for connection names in the code and the database
+            :return: DataFrame
+            """
+        query = f"WITH sub_city AS (\
+                SELECT city_id, city, region \
+        	    FROM {schema['city']} \
+        	    INNER JOIN {schema['region']} \
+        	    USING(region_code)), \
+            sub_model AS (SELECT brand, model, model_uid, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, \
+                body_type, modification, num_doors, gearbox_type, wheel_drive \
+        	    FROM {schema['model']} \
+        	    INNER JOIN {schema['modification']} \
+        	    ON fk_model_id = model_id) \
+        	SELECT avito_id, vin, brand, model, car_year, mileage, count_owners, is_climate, color, price, steering_wheel, \
+        	    is_owner, is_promo, city, region, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, \
+                modification, num_doors, gearbox_type, wheel_drive,  link, ad_date \
+            FROM {schema['advertisement']} AS ad\
+            INNER JOIN (\
+        	SELECT car_id, vin, brand, model, mileage, count_owners, is_climate, color, price, steering_wheel, car_year, \
+        	    en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, modification, num_doors, gearbox_type, \
+        	    wheel_drive\
+            FROM {schema['car']} \
+        	INNER JOIN sub_model\
+            USING(model_uid)) as car_model\
+            USING(car_id)\
+            INNER JOIN sub_city\
+            USING(city_id)"
+        # if hasattr(self, con)
+        self.df_all = pd.read_sql(query, self.con)
+        return self.df_all
+
+
+
 schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
-              "region": "region",
-              "model": "model", "modification": "modification"}
+              "region": "region", "model": "model", "modification": "modification"}
 
