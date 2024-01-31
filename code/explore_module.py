@@ -17,7 +17,7 @@ def check_normality_vis(row):
 
     # draw histogram
     plt.subplot(1, 2, 2)
-    n, bins, patches = plt.hist(row, 30, density=True, facecolor='g', alpha=0.75, label='Гистограмма')
+    plt.hist(row, 30, density=True, facecolor='g', alpha=0.75, label='Гистограмма')
     plt.title('Гистограмма распределения')
     plt.xlabel('Промежутки наблюдений')
     plt.ylabel('Плотность наблюдений')
@@ -54,9 +54,8 @@ def check_interview(df, pop_data):
            "price_distr": {"<300": 0.53, "300-500": 0.16, "500-800": 0.15, "800-1500": 0.15},
            "age_distr": {">20": 0.25, "15-19": 0.21, "10-14": 0.21, "5-10": 0.12, "3-5": 0.14, "<2": 0.07}}
 
-    df_pas = df[~(df["body_type"].isin(['Микроавтобус', 'Фургон', 'Минивэн']) & (df["brand"].isin(["ГАЗ", "УАЗ"]))) |
-                  ((df["body_type"] == 'Пикап') & (df["brand"].isin(["ГАЗ", "УАЗ"])) &
-                   (~df["model"].isin(["Карго", "Pickup"])))]
+    df_pas = df[~(df["body_type"].isin(['Микроавтобус', 'Фургон', 'Минивэн', 'Пикап']) & (df["brand"].isin(["ГАЗ", "УАЗ"]))) |
+             ~((df["brand"].isin(["ГАЗ", "УАЗ"])) & (~df["model"].isin(["Карго", "Pickup"])))]
 
     sample_data["mean_price"] = df["price"].mean()
     sample_data["mean_age"] = (2023 - df["car_year"]).mean()

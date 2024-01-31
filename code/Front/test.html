@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Форма</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css.css">
+</head>
+<body>
+    <form>
+        <label for="select1">Первый список:</label>
+        <select id="select1" onchange="document.getElementById('select2').classList.toggle('disabled', this.value === 'does not matter');">
+            {}
+        </select>
+
+        <br><br>
+
+        <label for="select2">Второй список:</label>
+        <select id="select2" class="disabled">
+            {}
+        </select>
+
+        <label for="select3">Второй список:</label>
+        <select id="select3">
+            <option value="">Выберите значение</option>
+            <option value="1">Опция 1</option>
+            <option value="2">Опция 2</option>
+            <option value="3">Опция 3</option>
+        </select>
+    </form>
+</body>
+</html>

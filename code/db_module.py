@@ -183,12 +183,12 @@ def get_all_db(con, schema):
 	    ON fk_model_id = model_id) \
 	SELECT avito_id, vin, brand, model, car_year, mileage, count_owners, is_climate, color, price, steering_wheel, \
 	    is_owner, is_promo, city, region, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, \
-        modification, num_doors, gearbox_type, wheel_drive,  link, ad_date \
+        modification, model_uid, num_doors, gearbox_type, wheel_drive,  link, ad_date \
     FROM {schema['advertisement']} AS ad\
     INNER JOIN (\
 	SELECT car_id, vin, brand, model, mileage, count_owners, is_climate, color, price, steering_wheel, car_year, \
-	    en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, modification, num_doors, gearbox_type, \
-	    wheel_drive\
+	    en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, modification, model_uid, num_doors, \
+	    gearbox_type, wheel_drive\
     FROM {schema['car']} \
 	INNER JOIN sub_model\
     USING(model_uid)) as car_model\
@@ -199,60 +199,185 @@ def get_all_db(con, schema):
     return df
 
 
-class FromDB:
-    def __init__(self, login, password, database_name):
-        self.login = login
-        self.password = password
-        self.database_name = database_name
+class ToDB:
+    """
+
+    """
+    def __init__(self, df, login, password, database_name, schema):
+        self.df = df
         self.con = sql.create_engine(
-            f"postgresql+psycopg2://{self.login}:{self.password}@localhost/{self.database_name}")
+            f"postgresql+psycopg2://{login}:{password}@localhost/{database_name}")
+        self.schema = schema
 
-    @property
-    def password(self):
-        return self._password
-
-    @password.setter
-    def password(self, new_password):
-        self._password = new_password
-
-
-    def get_all_db(self, schema):
+    def to_model_db(self):
         """
-            Download all values from the database
-            :param con: connection SQLAlchemy object for postgreSQL
-            :param schema: the dictionary for connection names in the code and the database
-            :return: DataFrame
-            """
+        Add information to table 'model'
+        :param df: a dataframe with all information
+        :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+        :param schema: a dict with names of tables in database
+        :return: no return. Change the input dataframe
+        """
+        df_model = self.df[["brand", "model"]].drop_duplicates()
+        db_model = pd.read_sql(f"SELECT brand, model FROM {self.schema['model']}", self.con)
+        db_model["join"] = db_model["brand"].str[:] + "_" + db_model["model"].str[:]
+        df_model["join"] = df_model["brand"].str[:] + "_" + df_model["model"].str[:]
+        new_models = df_model[~df_model["join"].isin(db_model["join"])][["brand", "model"]]
+        new_models.to_sql(self.schema['model'], self.con, index=False, if_exists="append")
+        print(f"{new_models.shape[0]} rows are added to the table {self.schema['model']}")
+
+    def to_modification_db(self):
+        """
+        Add information to table 'modification'
+        :param df: a dataframe with all information
+        :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+        :param schema: a dict with names of tables in database
+        :return: no return. Change the input dataframe
+        """
+        df_mod = self.df[["brand", "model", "model_uid", "en_capacity", "en_type", "en_power",
+                     "num_cylinders", "fuel_waste_mix", "body_type", "modification", "num_doors", "gearbox_type",
+                     "wheel_drive"]].drop_duplicates()
+        df_mod["fk_model_id"] = df_mod["brand"].str[:] + "_" + df_mod["model"].str[:]
+        db_model = pd.read_sql(f"SELECT * FROM {self.schema['model']}", self.con)
+        db_model["join"] = db_model["brand"].str[:] + "_" + db_model["model"].str[:]
+        model_i = {d_m: i for i, d_m in db_model[["model_id", "join"]].set_index("model_id")["join"].to_dict().items()}
+        df_mod["fk_model_id"].replace(model_i, inplace=True)
+        df_mod.drop(["brand", "model"], axis=1, inplace=True)
+        db_mod = pd.read_sql(f"SELECT model_uid FROM {self.schema['modification']}", self.con)
+        new_mods = df_mod[~df_mod["model_uid"].isin(db_mod["model_uid"])]
+        new_mods.to_sql(self.schema['modification'], self.con, index=False, if_exists="append")
+        print(f"{new_mods.shape[0]} rows are added to the table {self.schema['modification']}")
+
+    def to_car_db(self):
+        """
+        Add information to table 'car'
+        :param df: a dataframe with all information
+        :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+        :param schema: a dict with names of tables in database
+        :return: no return. Change the input dataframe
+        """
+        last_car_i = pd.read_sql(f"SELECT MAX(car_id) FROM {self.schema['car']}", self.con)["max"][0]
+        self.df["car_id"] = range(last_car_i + 1, last_car_i + 1 + self.df.shape[0])
+        df_car = self.df[["brand", "model", "model_uid", "vin", "year", "mileage", "count_owners",
+                     "air_condition", "steering_wheel", "color", "price", "car_id"]]
+        df_car["model_id"] = df_car["brand"].str[:] + "_" + df_car["model"].str[:]
+        db_model = pd.read_sql(f"SELECT * FROM {self.schema['model']}", self.con)
+        db_model["join"] = db_model["brand"].str[:] + "_" + db_model["model"].str[:]
+        model_i = {d_m: i for i, d_m in db_model[["model_id", "join"]].set_index("model_id")["join"].to_dict().items()}
+        df_car["model_id"].replace(model_i, inplace=True)
+        df_car.drop(["brand", "model"], axis=1, inplace=True)
+        df_car.columns = ['model_uid', 'vin', 'car_year', 'mileage', 'count_owners', 'is_climate',
+                          'steering_wheel', 'color', 'price', 'car_id', 'model_id']
+        # need to fix double prices
+        df_car.to_sql("car", self.con, index=False, if_exists="append")
+        print(f"{df_car.shape[0]} rows are added to the table {self.schema['car']}")
+
+    def to_city_db(self):
+        """
+        Add information to table 'city'
+        :param df: a dataframe with all information
+        :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+        :param schema: a dict with names of tables in database
+        :return: no return. Change the input dataframe
+        """
+        df_city = self.df[["city", "region"]].drop_duplicates()
+        db_region = pd.read_sql(f"SELECT region_code, region FROM {self.schema['region']}", self.con)
+        region_i = {name: i for i, name in
+                    db_region[["region_code", "region"]].set_index("region_code")["region"].to_dict().items()}
+        df_city["region"].replace(region_i, inplace=True)
+        df_city.columns = ['city', 'region_code']
+        db_city = pd.read_sql(f"SELECT city FROM {self.schema['city']}", self.con)
+        new_cities = df_city[~df_city["city"].isin(db_city["city"])]
+        new_cities.to_sql(self.schema['city'], self.con, index=False, if_exists="append")
+        print(f"{new_cities.shape[0]} rows are added to the table {self.schema['city']}")
+
+    def to_advertisement_db(self):
+        """
+        Add information to table 'advertisement'
+        :param df: a dataframe with all information
+        :param con: connection to a database. An object is created with create_engine function of sqlalchemy module
+        :param schema: a dict with names of tables in database
+        :return: no return. Change the input dataframe
+        """
+        # need to fix double avito_id
+        df_ad = self.df[["avito_id", "is_owner", "is_promo", "city", "link", "ad_date", "car_id"]]
+        db_city = pd.read_sql(f"SELECT city, city_id FROM {self.schema['city']}", self.con)
+        city_i = {d_m: i for i, d_m in db_city[["city_id", "city"]].set_index("city_id")["city"].to_dict().items()}
+        df_ad["city"].replace(city_i, inplace=True)
+        df_ad.columns = ["avito_id", "is_owner", "is_promo", "city_id", "link", "ad_date", "car_id"]
+        df_ad.to_sql("advertisement", self.con, index=False, if_exists="append")
+        print(f"{df_ad.shape[0]} rows are added to the table {self.schema['advertisement']}")
+
+    def to_database(self):
+        schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
+                  "region": "region",
+                  "model": "model", "modification": "modification"}
+        self.to_model_db()
+        self.to_modification_db()
+        self.to_city_db()
+        avito_id = pd.read_sql(f"SELECT avito_id FROM {self.schema['advertisement']}", self.con)
+        df_new = self.df[~self.df["avito_id"].isin(avito_id.avito_id)]
+        to_advertisement_db(df_new, con, schema)
+        to_car_db(df_new, con, schema)
+        print("The dataframe is imported to the database")
+
+
+class FromDB:
+    """
+    Give different sets of data from a database. Make connection during an initialisation.
+    Need to get name of the database and the login and the password for it
+    """
+    def __init__(self, login, password, database_name, schema):
+        try:
+            self.con = sql.create_engine(
+            f"postgresql+psycopg2://{login}:{password}@postgres:5432/{database_name}")
+        except sql.exc.DBAPIError:
+            self.con = sql.create_engine(
+            f"postgresql+psycopg2://{login}:{password}@localhost/{database_name}")
+
+        self.schema = schema
+
+    def get_all_db(self):
+        """
+        Download all values from the database
+        :param schema: the dictionary for connection names in the code and the database
+        :return: DataFrame
+        """
         query = f"WITH sub_city AS (\
                 SELECT city_id, city, region \
-        	    FROM {schema['city']} \
-        	    INNER JOIN {schema['region']} \
+        	    FROM {self.schema['city']} \
+        	    INNER JOIN {self.schema['region']} \
         	    USING(region_code)), \
             sub_model AS (SELECT brand, model, model_uid, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, \
                 body_type, modification, num_doors, gearbox_type, wheel_drive \
-        	    FROM {schema['model']} \
-        	    INNER JOIN {schema['modification']} \
+        	    FROM {self.schema['model']} \
+        	    INNER JOIN {self.schema['modification']} \
         	    ON fk_model_id = model_id) \
         	SELECT avito_id, vin, brand, model, car_year, mileage, count_owners, is_climate, color, price, steering_wheel, \
         	    is_owner, is_promo, city, region, en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, \
                 modification, num_doors, gearbox_type, wheel_drive,  link, ad_date \
-            FROM {schema['advertisement']} AS ad\
+            FROM {self.schema['advertisement']} AS ad\
             INNER JOIN (\
         	SELECT car_id, vin, brand, model, mileage, count_owners, is_climate, color, price, steering_wheel, car_year, \
         	    en_capacity, en_type, en_power, num_cylinders, fuel_waste_mix, body_type, modification, num_doors, gearbox_type, \
         	    wheel_drive\
-            FROM {schema['car']} \
+            FROM {self.schema['car']} \
         	INNER JOIN sub_model\
             USING(model_uid)) as car_model\
             USING(car_id)\
             INNER JOIN sub_city\
             USING(city_id)"
-        # if hasattr(self, con)
         self.df_all = pd.read_sql(query, self.con)
         return self.df_all
 
+    def cities_from_db(self):
+        """
+        Download actual list of cities from the database
+        :param schema: the dictionary for connection names in the code and the database
+        :return: DataFrame
+        """
+        cities = pd.read_sql(f"SELECT * FROM {self.schema['city']}", self.con)
+        return cities
 
 
 schema = {"advertisement": "advertisement", "car": "car", "city": "city", "fed_count": "fed_count",
               "region": "region", "model": "model", "modification": "modification"}
-

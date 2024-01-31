@@ -1,0 +1,13 @@
+numpy
+pandas
+matplotlib
+seaborn
+lxml
+selenium
+sqlalchemy
+psycopg2
+requests
+transliterate
+scikit-learn
+pandasql
+selenium
