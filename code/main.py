@@ -13,12 +13,9 @@ training_cols = ["brand", "model", "car_year", "mileage", "count_owners", "body_
 
 
 if __name__ == '__main__':
-    #login = input("Enter the login")
-    #password = input("Enter the password")
-    #db = input("Enter the name of the database")
-    login = "postgres"
-    password = "pVmestooBrat2691!"
-    db = "parse_avito_cars"
+    login = input("Enter the login")
+    password = input("Enter the password")
+    db = input("Enter the name of the database")
     source = FromDB(login, password, db, schema)
     df = source.get_all_db()
     print(f"The DataFrame with {df.shape[0]} cars")
