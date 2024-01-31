@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from db_module import FromDB, schema
-from backend_module import convert_to_html_values, PetServer
+from backend_module import PetServer
 from compute_module import ServerDataFrame
 
 
@@ -13,12 +13,15 @@ training_cols = ["brand", "model", "car_year", "mileage", "count_owners", "body_
 
 
 if __name__ == '__main__':
-    login = input("Enter the login")
-    password = input("Enter the password")
-    db = input("Enter the name of the database")
-
-    source = FromDB(login, password, db)
-    df = source.get_all_db(schema)
+    #login = input("Enter the login")
+    #password = input("Enter the password")
+    #db = input("Enter the name of the database")
+    login = "postgres"
+    password = "pVmestooBrat2691!"
+    db = "parse_avito_cars"
+    source = FromDB(login, password, db, schema)
+    df = source.get_all_db()
+    print(f"The DataFrame with {df.shape[0]} cars")
     server_df = ServerDataFrame(df)
     my_server = PetServer
     my_server.add_df(server_df)
@@ -27,3 +30,5 @@ if __name__ == '__main__':
     print('Server running at http://localhost:8000')
     httpd.serve_forever()
 
+if __name__ == '__main__':
+    print("Hello. It's work")
